@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Consulta CSI</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+  <style>
+    /* Estilos gerais */
+    body {
+      background-color: #ee008c;
+      color: white;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      height: 100vh;
+      margin: 0;
+      padding-top: 150px;
+    }
+
+    /* Título */
+    h1 {
+      font-size: 24px;
+      margin-bottom: 20px;
+    }
+
+    /* Campo de input e botão */
+    .input-container {
+      position: relative;
+      display: inline-block;
+    }
+
+    input, button {
+      padding: 10px;
+      font-size: 16px;
+      border: none;
+      border-radius: 5px;
+    }
+
+    input {
+      width: 250px;
+      text-align: center;
+    }
+
+    button {
+      background-color: white;
+      color: #ee008c;
+      font-weight: bold;
+      cursor: pointer;
+      margin-top: 10px;
+      margin-left: 10px;
+    }
+
+    button:hover {
+      background-color: #ff99cc;
+    }
+
+    /* Lista de sugestões */
+    .autocomplete-list {
+      position: absolute;
+      background: white;
+      color: black;
+      border-radius: 5px;
+      width: 100%;
+      max-height: 150px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      text-align: left;
+      z-index: 1000;
+    }
+
+    .autocomplete-item {
+      padding: 8px;
+      cursor: pointer;
+    }
+
+    .autocomplete-item:hover {
+      background: #ff99cc;
+      color: white;
+    }
+
+    /* Resultado */
+    #resultado {
+      margin-top: 20px;
+      font-size: 18px;
+      padding: 15px;
+      background-color: rgba(255, 255, 255, 0.2);
+      border-radius: 5px;
+      display: inline-block;
+      max-width: 400px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Faça aqui a sua pesquisa</h1>
+  
+  <div class="input-container">
+    <input type="text" id="nomeCliente" placeholder="Digite o nome do cliente">
+    <div id="autocomplete-list" class="autocomplete-list"></div>
+  </div>
+  
+  <button id="botaoPesquisa">Pesquisar</button>
+
+  <div id="resultado"></div>
+
+  <script>
+    const nomeClienteInput = document.getElementById('nomeCliente');
+    const resultadoDiv = document.getElementById('resultado');
+    const botaoPesquisa = document.getElementById('botaoPesquisa');
+    const autocompleteList = document.getElementById('autocomplete-list');
+    let data = [];
+
+    function limparCabecalho(obj) {
+      let novoObj = {};
+      Object.keys(obj).forEach(key => {
+        let chaveLimpa = key.trim();
+        novoObj[chaveLimpa] = obj[key];
+      });
+      return novoObj;
+    }
+
+    // Carregar o arquivo CSV
+    function carregarCSV(arquivo, callback) {
+      fetch(arquivo)
+        .then(response => response.text())
+        .then(csvData => {
+          Papa.parse(csvData, {
+            delimiter: ",",
+            header: true,
+            skipEmptyLines: true,
+            complete: function(results) {
+              callback(results.data.map(limparCabecalho));
+            }
+          });
+        })
+        .catch(error => {
+          console.error(`Erro ao carregar ${arquivo}:`, error);
+        });
+    }
+
+    // Carregar os dados da planilha
+    carregarCSV('cz.csv', (dados) => { data = dados; });
+
+    // Função para mostrar sugestões na lista
+    function mostrarSugestoes() {
+      const nomeDigitado = nomeClienteInput.value.trim().toLowerCase();
+      autocompleteList.innerHTML = '';
+
+      if (nomeDigitado.length < 1) return;
+
+      const sugestoes = data
+        .filter(cliente => cliente.Name?.toLowerCase().includes(nomeDigitado))
+        .map(cliente => cliente.Name);
+
+      // Evitar sugestões repetidas
+      const sugestoesUnicas = [...new Set(sugestoes)];
+
+      sugestoesUnicas.forEach(nome => {
+        const item = document.createElement('div');
+        item.classList.add('autocomplete-item');
+        item.textContent = nome;
+        item.addEventListener('click', () => {
+          nomeClienteInput.value = nome;
+          autocompleteList.innerHTML = ''; // Limpa as sugestões após selecionar
+        });
+        autocompleteList.appendChild(item);
+      });
+    }
+
+    // Evento ao digitar no campo de nome
+    nomeClienteInput.addEventListener('input', mostrarSugestoes);
+
+    botaoPesquisa.addEventListener('click', () => {
+      const nomeCliente = nomeClienteInput.value.trim().toLowerCase();
+
+      if (!nomeCliente) {
+        resultadoDiv.textContent = 'Por favor, digite um nome.';
+        return;
+      }
+
+      // Filtra clientes que tenham qualquer parte do nome digitado
+      const clientesEncontrados = data.filter(cliente => 
+        cliente.Name?.trim().toLowerCase().includes(nomeCliente)
+      );
+
+      if (clientesEncontrados.length > 0) {
+        resultadoDiv.innerHTML = clientesEncontrados.map(cliente => `
+          <strong>Cliente:</strong> ${cliente.Name} <br>
+          <strong>CSI:</strong> ${cliente["CSI Name"]} <br>
+          <strong>CSM:</strong> ${cliente.CSM} <br><br>
+        `).join('');
+      } else {
+        resultadoDiv.textContent = 'Cliente não encontrado.';
+      }
+    });
+
+    // Fechar sugestões se clicar fora do input
+    document.addEventListener('click', (event) => {
+      if (!nomeClienteInput.contains(event.target)) {
+        autocompleteList.innerHTML = '';
+      }
+    });
+  </script>
+    <img id="imagemDecorativa" src="https://static.wixstatic.com/media/71e7fa_b85196e665804514bbfd2f38d66f5a4b~mv2.png/v1/fit/w_500,h_500,q_90/file.png" alt="Imagem decorativa">
+
+</body>
+</html>

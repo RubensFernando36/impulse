@@ -1,0 +1,17 @@
+body {
+    font-family: roboto;
+  }
+  
+  #resultado {
+    margin-top: 10px;
+    font-weight: bold;
+  }
+
+  /* Estilizando a imagem */
+#imagemDecorativa {
+  margin-top: 20px; /* Adiciona espaço entre o botão e a imagem */
+  width: 150px; /* Ajuste o tamanho conforme necessário */
+  height: auto; /* Mantém a proporção */
+}
+
+  
